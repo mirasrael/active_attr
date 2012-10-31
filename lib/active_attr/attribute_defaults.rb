@@ -71,7 +71,10 @@ module ActiveAttr
       @attributes ||= {}
       defaults.each do |name, value|
         # instance variable is used here to avoid any dirty tracking in attribute setter methods
-        @attributes[name] = value unless @attributes.has_key? name
+        unless @attributes.has_key? name
+          value = instance_exec(&value) if value.respond_to?(:call)
+          @attributes[name] = value
+        end
       end
     end
 
@@ -90,7 +93,7 @@ module ActiveAttr
     #
     # @since 0.5.0
     def attribute_defaults
-      Hash[ self.class.attribute_names.map { |name| [name, _attribute_default(name)] } ]
+      Hash[self.class.attribute_names.map { |name| [name, _attribute_default(name)] }]
     end
 
     # Applies attribute default values
@@ -111,9 +114,10 @@ module ActiveAttr
       default = self.class.attributes[attribute_name][:default]
 
       case
-      when default.respond_to?(:call) then instance_exec(&default)
-      when default.duplicable? then default.dup
-      else default
+        when default.duplicable? then
+          default.dup
+        else
+          default
       end
     end
   end
